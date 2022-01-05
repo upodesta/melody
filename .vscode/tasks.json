@@ -1,0 +1,194 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Pre Debug Check",
+            "dependsOn": [
+                "dependency check",
+                "start ngrok",
+                "prepare dev env"
+            ],
+            "dependsOrder": "sequence"
+        },
+        {
+            "label": "dependency check",
+            "type": "shell",
+            "command": "echo ${command:fx-extension.validate-dependencies}"
+        },
+        {
+            "label": "start ngrok",
+            "type": "teamsfx",
+            "command": "ngrok start",
+            "isBackground": true,
+            "dependsOn": [
+                "bot npm install"
+            ]
+        },
+        {
+            "label": "prepare dev env",
+            "dependsOn": [
+                "prepare local environment",
+                "frontend npm install",
+                "backend npm install"
+            ],
+            "dependsOrder": "parallel"
+        },
+        {
+            "label": "prepare local environment",
+            "type": "shell",
+            "command": "echo ${command:fx-extension.pre-debug-check}"
+        },
+        {
+            "label": "Start Frontend",
+            "dependsOn": [
+                "teamsfx: frontend start",
+                "teamsfx: auth start"
+            ],
+            "dependsOrder": "parallel"
+        },
+        {
+            "label": "frontend npm install",
+            "type": "shell",
+            "command": "npm install",
+            "options": {
+                "cwd": "${workspaceFolder}/tabs"
+            }
+        },
+        {
+            "label": "Start Backend",
+            "dependsOn": "teamsfx: backend start"
+        },
+        {
+            "label": "backend extensions install",
+            "type": "shell",
+            "command": "echo ${command:fx-extension.backend-extensions-install}"
+        },
+        {
+            "label": "backend npm install",
+            "type": "shell",
+            "command": "npm install",
+            "options": {
+                "cwd": "${workspaceFolder}/api"
+            },
+            "dependsOn": "backend extensions install"
+        },
+        {
+            "label": "Start Bot",
+            "dependsOn": "teamsfx: bot start"
+        },
+        {
+            "label": "bot npm install",
+            "type": "shell",
+            "command": "npm install",
+            "options": {
+                "cwd": "${workspaceFolder}/bot"
+            }
+        },
+        {
+            "label": "build",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/api/extensions.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "publish",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "publish",
+                "${workspaceFolder}/api/extensions.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "watch",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "watch",
+                "run",
+                "${workspaceFolder}/api/extensions.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "type": "docker-build",
+            "label": "docker-build: debug",
+            "dependsOn": [
+                "build"
+            ],
+            "dockerBuild": {
+                "tag": "melody:dev",
+                "target": "base",
+                "dockerfile": "${workspaceFolder}/api/Dockerfile",
+                "context": "${workspaceFolder}",
+                "pull": true
+            },
+            "netCore": {
+                "appProject": "${workspaceFolder}/api/extensions.csproj"
+            }
+        },
+        {
+            "type": "docker-build",
+            "label": "docker-build: release",
+            "dependsOn": [
+                "build"
+            ],
+            "dockerBuild": {
+                "tag": "melody:latest",
+                "dockerfile": "${workspaceFolder}/api/Dockerfile",
+                "context": "${workspaceFolder}",
+                "pull": true
+            },
+            "netCore": {
+                "appProject": "${workspaceFolder}/api/extensions.csproj"
+            }
+        },
+        {
+            "type": "docker-run",
+            "label": "docker-run: debug",
+            "dependsOn": [
+                "docker-build: debug"
+            ],
+            "dockerRun": {
+                "os": "Windows"
+            },
+            "netCore": {
+                "appProject": "${workspaceFolder}/api/extensions.csproj",
+                "enableDebugging": true
+            }
+        },
+        {
+            "type": "docker-run",
+            "label": "docker-run: release",
+            "dependsOn": [
+                "docker-build: release"
+            ],
+            "dockerRun": {
+                "os": "Windows"
+            },
+            "netCore": {
+                "appProject": "${workspaceFolder}/api/extensions.csproj"
+            }
+        },
+        {
+            "type": "teamsfx",
+            "command": "backend start",
+            "component": "",
+            "problemMatcher": [
+                "$teamsfx-backend-watch"
+            ],
+            "label": "teamsfx: backend start"
+        }
+    ]
+}
